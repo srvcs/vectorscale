@@ -1,0 +1,106 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "srvcs-vectorscale",
+    "description": "",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "summary": "`GET /` — service identity (srvcs service standard).",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [],
+        "summary": "`POST /` — scale a vector by a scalar.",
+        "description": "This service owns the *control flow* but delegates every multiplication to\n`srvcs-floatmultiply`. For each component `c` of the vector it asks for\n`floatmultiply(c, scalar)` and collects the results into a new vector. The\nempty vector scales to the empty vector and makes no dependency calls.\n\nValidation is not handled here: this service never calls `srvcs-isnumber`\ndirectly. If the dependency is unreachable it reports itself degraded\n(`503`); if the dependency rejects a component it forwards the `422`.",
+        "operationId": "evaluate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "the scaled vector (a JSON array of f64 numbers)"
+          },
+          "422": {
+            "description": "a dependency rejected an input (forwarded)"
+          },
+          "500": {
+            "description": "a dependency returned a malformed result"
+          },
+          "503": {
+            "description": "a dependency is unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EvalRequest": {
+        "type": "object",
+        "required": [
+          "vector",
+          "scalar"
+        ],
+        "properties": {
+          "scalar": {
+            "type": "object",
+            "description": "The scalar to multiply every component by."
+          },
+          "vector": {
+            "type": "object",
+            "description": "The vector to scale. Each element is passed straight into the\ndependency's request body as an operand."
+          }
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "service",
+          "concern",
+          "depends_on"
+        ],
+        "properties": {
+          "concern": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
